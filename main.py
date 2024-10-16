@@ -1,12 +1,14 @@
 import os
-import re
 import openai
 import pandas as pd
 import streamlit as st
 from llama_index.core import SQLDatabase
+from llama_index.core import PromptTemplate
+from llama_index.core.prompts.prompt_type import PromptType
 from llama_index.core.query_engine import NLSQLTableQueryEngine
 from llama_index.llms.openai import OpenAI
-from utils import sanitize_column_name, map_dtype, create_table_from_dataframe
+from prompts import DEFAULT_TEXT_TO_SQL_TMPL
+from utils import create_table_from_dataframe
 from sqlalchemy import create_engine, MetaData
 
 openai.api_key = os.environ.get("OPENAI_API_KEY")
@@ -32,8 +34,14 @@ def main():
             create_table_from_dataframe(df, table_name, engine, metadata_obj)
             sql_database = SQLDatabase(engine, include_tables=[table_name])
             llm = OpenAI(temperature=0.001, model="gpt-4o-mini-2024-07-18")
+            DEFAULT_TEXT_TO_SQL_PROMPT = PromptTemplate(
+                DEFAULT_TEXT_TO_SQL_TMPL,
+                prompt_type=PromptType.TEXT_TO_SQL,
+            )
             query_engine = NLSQLTableQueryEngine(
-                sql_database=sql_database, tables=[table_name]
+                sql_database=sql_database, tables=[table_name],
+                text_to_sql_prompt=DEFAULT_TEXT_TO_SQL_PROMPT,
+                llm=llm
             )
             query_str = st.text_input("Enter your query here")
             submit_button = st.button("Submit")
